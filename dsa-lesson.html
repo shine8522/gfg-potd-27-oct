@@ -1,0 +1,248 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>A/B Pair Score · Recursion, Memoization, Tabulation</title>
+<style>
+:root{--bg:#0b1220;--p:#131d33;--b:#26365c;--t:#eef3ff;--m:#9fb0d3;--cy:#22d3ee;--vi:#a78bfa;--gr:#34d399;--am:#fbbf24;--rd:#f87171}
+*{box-sizing:border-box}body{margin:0;background:#070c16;color:var(--t);font:15px/1.45 system-ui,Segoe UI,sans-serif}
+#app{margin:0 auto;width:100%;max-width:1200px;padding:10px;background:var(--bg);min-height:100vh;transition:max-width .3s}
+#app[data-v=t]{max-width:760px}#app[data-v=m]{max-width:360px}
+h1{font-size:19px;margin:4px 0 8px}h3{margin:0 0 6px;font-size:14px;color:var(--m)}
+.pn{background:var(--p);border:1px solid var(--b);border-radius:12px;padding:10px;margin-bottom:10px;min-width:0}
+.row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+button,select,input{font:inherit;color:var(--t);background:#1a2848;border:1px solid var(--b);border-radius:8px;padding:8px 11px;min-height:40px}
+button{cursor:pointer}button:hover{background:#25376a}button.on{background:var(--cy);color:#041018;border-color:var(--cy);font-weight:700}
+:focus-visible{outline:3px solid var(--am);outline-offset:2px}
+input{width:150px;letter-spacing:.15em;font-weight:700}
+.err{color:var(--rd);font-weight:700}.ok{color:var(--gr);font-weight:700}
+main{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#app[data-v=t] main,#app[data-v=m] main{grid-template-columns:1fr}
+@media(max-width:800px){main{grid-template-columns:1fr}}
+.cards{display:flex;gap:6px;flex-wrap:wrap}.cd{width:54px;text-align:center;border:2px solid var(--b);border-radius:10px;padding:4px 0;background:#0e1730}
+.cd b{font-size:24px;display:block}.cd small{display:block;font-size:10px;color:var(--m);min-height:13px}
+.cd.cur{border-color:var(--cy)}.cd.pr{border:2px dashed var(--vi)}.cd.done{opacity:.45}
+.cells{display:flex;gap:6px;flex-wrap:wrap}.cl{min-width:62px;text-align:center;border:2px solid var(--b);border-radius:8px;padding:3px 4px;background:#0e1730;font-size:12px}
+.cl b{display:block;font-size:18px}.cl.act{border-color:var(--cy)}.cl.hit{border-color:var(--gr);background:#0c3328}.cl.use{border:2px dashed var(--am)}.cl.base{border-style:dotted}
+pre{margin:0;overflow:auto;font:13px/1.55 Consolas,monospace}.ln{display:block;white-space:pre;padding:0 6px;border-left:4px solid transparent;cursor:default}
+.ln i{color:#5d6f9a;font-style:normal;display:inline-block;width:26px}.ln.a{background:#1d3a55;border-left-color:var(--cy)}.k{color:var(--vi)}.nm{color:var(--am)}
+.tb{overflow:auto;max-height:260px}table{border-collapse:collapse;width:100%;font-size:13px}th,td{border:1px solid var(--b);padding:3px 6px;text-align:left}tr[data-k]{cursor:pointer}tr.a{background:#1d3a55}
+#tree{overflow:auto;max-height:340px}svg text{fill:var(--t);font:11px system-ui}
+.fr{display:inline-block;border:2px solid var(--b);border-radius:6px;padding:2px 8px;margin:2px}.fr.a{border-color:var(--cy)}
+#ex{min-height:64px}.q{margin:8px 0}.q button{margin:2px}
+</style></head><body><div id="app" data-v="d">
+<h1>A/B pair score — recursion → memoization → tabulation</h1>
+<div class="pn"><div class="row"><label for="in">String (A/B only):</label><input id="in" maxlength="12" value="AAA" aria-describedby="msg"><button id="rs">Reset animation</button>
+<span class="row" role="group" aria-label="Layout preview"><button data-v="d" class="on">Desktop</button><button data-v="t">Tablet</button><button data-v="m">Mobile</button></span></div>
+<div class="row" id="pre" style="margin-top:6px"></div><div id="msg" role="status"></div>
+<table style="margin-top:8px"><tr><th>Situation</th><th>Score</th></tr><tr><td>Character left alone</td><td>+1</td></tr><tr><td>Different pair AB / BA</td><td>+4</td></tr><tr><td>Equal pair (one toggle): 4 − 1</td><td>+3</td></tr><tr><td>Each toggle</td><td>−1</td></tr></table></div>
+<nav class="pn row" id="ch" aria-label="Chapters"></nav><section class="pn" id="intro"></section>
+<div class="pn row" id="ctl" role="group" aria-label="Playback"></div>
+<main><div><div class="pn"><h3>String</h3><div class="cards" id="str"></div></div>
+<div class="pn"><h3>What is happening</h3><div id="ex" aria-live="polite"></div><div id="sc"></div></div>
+<div class="pn"><h3>Call stack · counters</h3><div id="stk"></div><div id="cnt"></div></div>
+<div class="pn"><h3 id="stT">Storage</h3><div class="cells" id="cells"></div></div>
+<div class="pn" id="trp"><h3>Recursion tree (click a node to jump)</h3><div id="tree"></div></div></div>
+<div><div class="pn"><div class="row"><h3 style="flex:1">C++ code</h3><button id="cp">Copy code</button></div><pre id="code" tabindex="0"></pre></div>
+<div class="pn"><h3>Variables</h3><div id="vars"></div></div>
+<div class="pn"><h3>Dry-run table (click a row)</h3><div class="tb" id="dry"></div></div>
+<div class="pn"><h3>Validation</h3><div id="val"></div></div></div></main></div>
+<script>
+// ===== CODE =====
+const CODE={rec:`int solve(string &s, int i) {
+    int n = s.length();
+
+    if (i >= n) {
+        return 0;
+    }
+
+    int option1 = 1 + solve(s, i + 1);
+
+    int ans = option1;
+
+    if (i + 1 < n) {
+        int pairScore = (s[i] != s[i + 1]) ? 4 : 3;
+
+        int option2 = pairScore + solve(s, i + 2);
+
+        ans = max(option1, option2);
+    }
+
+    return ans;
+}`,memo:`int solve(string &s, int i, vector<int> &dp) {
+    int n = s.length();
+
+    if (i >= n) {
+        return 0;
+    }
+
+    if (dp[i] != -1) {
+        return dp[i];
+    }
+
+    int option1 = 1 + solve(s, i + 1, dp);
+
+    int ans = option1;
+
+    if (i + 1 < n) {
+        int pairScore = (s[i] != s[i + 1]) ? 4 : 3;
+
+        int option2 = pairScore + solve(s, i + 2, dp);
+
+        ans = max(option1, option2);
+    }
+
+    dp[i] = ans;
+
+    return dp[i];
+}
+// init: vector<int> dp(s.length(), -1);
+//       int answer = solve(s, 0, dp);`,tab:`int solve(string &s) {
+    int n = s.length();
+
+    vector<int> dp(n + 2, 0);
+
+    for (int i = n - 1; i >= 0; i--) {
+        int option1 = 1 + dp[i + 1];
+
+        int ans = option1;
+
+        if (i + 1 < n) {
+            int pairScore = (s[i] != s[i + 1]) ? 4 : 3;
+
+            int option2 = pairScore + dp[i + 2];
+
+            ans = max(option1, option2);
+        }
+
+        dp[i] = ans;
+    }
+
+    return dp[0];
+}`};
+const LINES={};for(const k in CODE)LINES[k]=CODE[k].split('\n');
+// ===== TRACE ENGINE (simulates the C++ above, records every event) =====
+function trace(kind,s){
+ const L=LINES[kind],ln=(t,last)=>last?L.map(x=>x.includes(t)).lastIndexOf(true):L.findIndex(x=>x.includes(t));
+ const n=s.length,ev=[],nodes=[],stack=[],dp=kind=='memo'?Array(n).fill(-1):kind=='tab'?Array(n+2).fill(0):[];
+ let hit=0,miss=0,calls=0,base=0;
+ const R=(line,text,v={})=>ev.push({line,text,v,stack:[...stack],dp:[...dp],hit,miss,calls,base});
+ const sig=ln('int solve'),bs=ln('if (i >= n)'),o1l=ln('int option1'),ansl=ln('int ans'),nxt=ln('if (i + 1 < n)'),psl=ln('int pairScore'),o2l=ln('int option2'),mxl=ln('ans = max');
+ function f(i,par){
+  const id=nodes.length,nd={i,par,kids:[],enter:ev.length,exit:1e9,val:null,hit:false,o1:'—',o2:'—'};nodes.push(nd);if(par!=null)nodes[par].kids.push(id);
+  stack.push(id);calls++;R(sig,`Call solve(${i}): best score from index ${i} to the end.`,{i});
+  R(bs,`Is i=${i} ≥ n=${n}? ${i>=n?'Yes':'No'}.`,{i});
+  const fin=(val,line,txt,v)=>{nd.val=val;R(line,txt,{i,...v,ret:val});nd.exit=ev.length-1;stack.pop();return val};
+  if(i>=n){base++;return fin(0,bs+1,`Base case: no characters remain, return 0.`,{})}
+  if(kind=='memo'){const cl=ln('dp[i] != -1');R(cl,`Cache check: dp[${i}] = ${dp[i]}.`,{i});
+   if(dp[i]!=-1){hit++;nd.hit=true;return fin(dp[i],cl+1,`Cache HIT: return stored dp[${i}] = ${dp[i]} without expanding children.`,{hit:1,ans:dp[i]})}
+   miss++;R(cl,`Cache MISS: dp[${i}] is -1, so calculate this state.`,{i,miss:1})}
+  R(o1l,`option1: leave s[${i}]='${s[i]}' alone (+1), then solve(${i+1}). Child result pending.`,{i,o1:'pending'});
+  const c1=f(i+1,id),o1=1+c1;nd.o1=o1;R(o1l,`solve(${i+1}) returned ${c1}. option1 = 1 + ${c1} = ${o1}.`,{i,o1});
+  let ans=o1;R(ansl,`ans = option1 = ${ans}.`,{i,o1,ans});
+  if(i+1<n){R(nxt,`i+1=${i+1} < n=${n}: a next character exists, so pairing is allowed.`,{i,o1,ans});
+   const ps=s[i]!=s[i+1]?4:3;R(psl,s[i]!=s[i+1]?`'${s[i]}' ≠ '${s[i+1]}': different, gross 4, no toggle, net 4.`:`'${s[i]}' = '${s[i+1]}': equal, toggle one (−1): 4 − 1 = net 3.`,{i,o1,ans,ps});
+   R(o2l,`option2: pair indices ${i},${i+1} (+${ps}), then solve(${i+2}). Child result pending.`,{i,o1,ans,ps,o2:'pending'});
+   const c2=f(i+2,id),o2=ps+c2;nd.o2=o2;R(o2l,`solve(${i+2}) returned ${c2}. option2 = ${ps} + ${c2} = ${o2}.`,{i,o1,ans,ps,o2});
+   ans=Math.max(o1,o2);R(mxl,`ans = max(${o1}, ${o2}) = ${ans}${o1==o2?' (tie: both choices are optimal)':''}.`,{i,o1,o2,ps,ans})}
+  else R(nxt,`i+1=${i+1} is not < n=${n}: no next character, pair option unavailable.`,{i,o1,ans});
+  if(kind=='memo'){dp[i]=ans;R(ln('dp[i] = ans'),`Store dp[${i}] = ${ans} for later reuse.`,{i,ans})}
+  return fin(ans,kind=='memo'?ln('return dp[i]',1):ln('return ans'),`Return ${ans} to the caller.`,{ans})}
+ let ans;
+ if(kind=='tab'){R(ln('vector<int> dp'),`Table of n+2 = ${n+2} cells, all 0. dp[${n}] and dp[${n+1}] are safe base values.`,{});
+  for(let i=n-1;i>=0;i--){const fl=ln('for (int i');R(fl,`i=${i}: needs dp[${i+1}]${i+1<n?` and dp[${i+2}]`:''} (already known, because we go right to left).`,{i});
+   const o1=1+dp[i+1];R(o1l,`option1 = 1 + dp[${i+1}] = 1 + ${dp[i+1]} = ${o1}.`,{i,o1});let a=o1,o2='—',ps;
+   if(i+1<n){ps=s[i]!=s[i+1]?4:3;o2=ps+dp[i+2];R(psl,`pairScore for '${s[i]}','${s[i+1]}' = ${ps}${ps==3?' (4 − 1 toggle)':''}.`,{i,o1,ps});R(o2l,`option2 = ${ps} + dp[${i+2}] = ${ps} + ${dp[i+2]} = ${o2}.`,{i,o1,ps,o2});a=Math.max(o1,o2);R(mxl,`ans = max(${o1}, ${o2}) = ${a}.`,{i,o1,o2,ps,ans:a})}
+   else R(nxt,`i+1=${i+1} is not < n: pair option unavailable.`,{i,o1,ans:a});
+   dp[i]=a;R(ln('dp[i] = ans'),`dp[${i}] = ${a}.`,{i,o1,o2,ps,ans:a,row:1})}
+  ans=dp[0];R(ln('return dp[0]'),`Return dp[0] = ${ans}.`,{ans})}
+ else{ans=f(0,null);}
+ // tree layout
+ let leaf=0;const pos=id=>{const nd=nodes[id];nd.d=nd.par==null?0:nodes[nd.par].d+1;nd.kids.forEach(pos);nd.x=nd.kids.length?(nodes[nd.kids[0]].x+nodes[nd.kids[nd.kids.length-1]].x)/2:leaf++};
+ if(nodes.length)(function g(id){const nd=nodes[id];nd.d=nd.par==null?0:nodes[nd.par].d+1;nd.kids.forEach(g);nd.x=nd.kids.length?(nodes[nd.kids[0]].x+nodes[nd.kids[nd.kids.length-1]].x)/2:leaf++})(0);
+ return{ev,nodes,ans,kind,s,final:ev[ev.length-1]};
+}
+// ===== independent verifiers =====
+const pairOf=(s,i)=>s[i]!=s[i+1]?4:3;
+const vRec=(s,i=0)=>{if(i>=s.length)return 0;let a=1+vRec(s,i+1);if(i+1<s.length)a=Math.max(a,pairOf(s,i)+vRec(s,i+2));return a};
+const vMemo=(s)=>{const m=new Map,g=i=>{if(i>=s.length)return 0;if(m.has(i))return m.get(i);let a=1+g(i+1);if(i+1<s.length)a=Math.max(a,pairOf(s,i)+g(i+2));m.set(i,a);return a};return g(0)};
+const vTab=(s)=>{const n=s.length,d=Array(n+2).fill(0);for(let i=n-1;i>=0;i--){d[i]=1+d[i+1];if(i+1<n)d[i]=Math.max(d[i],pairOf(s,i)+d[i+2])}return d[0]};
+const vBrute=(s)=>{const all=i=>{if(i>=s.length)return[0];const r=all(i+1).map(x=>1+x);if(i+1<s.length){const tog=s[i]==s[i+1]?1:0;all(i+2).forEach(x=>r.push(4-tog+x))}return r};return Math.max(...all(0))};
+// ===== STATE / UI =====
+const CH=[['1 Problem','rec',null,'A string of A/B characters. A toggle flips a character and costs 1. Adjacent different characters form a pair worth 4. A character outside a pair is worth 1. Equal characters need one toggle to pair: 4 − 1 = net 3. Goal: maximum score.'],
+['2 Choices','rec','AB','At index i, solve(i) = best score from i to the end. Choice 1: leave s[i] alone, 1 + solve(i+1) (one character used → move 1). Choice 2 (only if i+1 < n): pair with s[i+1], pairScore + solve(i+2) (two used → move 2). Take the max. If i ≥ n the answer is 0.'],
+['3 Recursion','rec','AB','Each call waits for its child calls to return before it can finish its arithmetic. Step forward and watch the call stack and the "pending" values.'],
+['4 Recursion dry run','rec','AAA','Full execution for AAA. Expected: solve(3)=0, solve(2)=1, solve(1)=3, solve(0)=4. Repeated calls keep separate nodes.'],
+['5 Repeated work','rec','AAAA','The same index is reached by different branches (solve(2), solve(3) …) and recalculated every time. The state depends only on index and the fixed string, not on the path.'],
+['6 Memoization','memo','AAA','dp[i] caches solve(i); −1 means "not calculated". On a cache hit the call returns immediately and does not expand its subtree. Only indices 0…n−1 are cached; the base case returns before the cache is touched.'],
+['7 Memo dry run','memo','ABABABA','Full memoized run. Counters come from the trace: invocations, base calls, hits, misses (= states calculated).'],
+['8 Tabulation','tab','AAA','dp[i] needs only dp[i+1] and dp[i+2], so compute those first: loop from n−1 down to 0. The table has n+2 zeros so dp[i+2] is a valid access; dp[n] = 0 means nothing remains.'],
+['9 Tabulation dry run','tab','ABABABA','Each iteration fills one cell, using real values from the table. There is no recursion, so no call stack.'],
+['10 Compare','rec',null,''],['11 Quiz','rec',null,'']];
+const PRE=['A','AA','AB','AAA','AAB','ABA','ABAB','ABABA','ABABABA'];
+const QZ=[['If we leave the current character alone, how far does the index move?',['One position','Two positions','It stays'],0,'One character was used, so the next unprocessed index is i + 1.'],
+['Two adjacent characters are already different. Net pair score?',['3','4','5'],1,'No toggle is needed: 4 − 0 = 4.'],
+['For AA, how do we get 3?',['Toggle one, +4, −1','Two singles','Toggle both'],0,'One toggle makes the pair valid: 4 − 1 = 3.'],
+['Why does memoization return a stored answer?',['It guesses','The same state was already calculated','The string changed'],1,'The answer depends only on the index (string is fixed), so it can be reused.'],
+['Why does tabulation fill right to left?',['Habit','dp[i] needs dp[i+1] and dp[i+2]','Smaller memory'],1,'Those larger-index answers must exist before dp[i] is computed.'],
+['A pair consumes indices 2 and 3. Which index is next?',['3','4','5'],1,'Index 4 is the first unconsumed character.']];
+const $=id=>document.getElementById(id);
+let st={ch:0,kind:'rec',str:'AAA',k:0,T:null,timer:null,sp:1};
+const esc=t=>t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const hl=t=>esc(t).replace(/\b(int|if|for|return|vector|string)\b/g,'<span class=k>$1</span>').replace(/\b(\d+)\b/g,'<span class=nm>$1</span>');
+function stop(){clearInterval(st.timer);st.timer=null;ctl()}
+function build(){stop();const s=st.str,m=$('msg');$('in').value=s;
+ if(!/^[AB]*$/.test(s)){m.className='err';m.textContent='Input must contain only A and B. Algorithms were not run.';st.T=null;render();return}
+ m.className='';m.textContent=s?'':'Empty string: the answer is 0 (base case immediately).';
+ st.T={rec:trace('rec',s),memo:trace('memo',s),tab:trace('tab',s)};st.k=0;render()}
+const cur=()=>st.T[st.kind];
+function ctl(){const T=st.T,last=T?cur().ev.length-1:0;
+ $('ctl').innerHTML=`<button id="b0" aria-label="Jump to beginning">⏮</button><button id="b1" aria-label="Step backward">◀ Back</button><button id="bp" aria-label="${st.timer?'Pause':'Play'}">${st.timer?'⏸ Pause':'▶ Play'}</button><button id="b2" aria-label="Step forward">Next ▶</button><button id="b3" aria-label="Jump to end">⏭</button><button id="b4">Restart</button><label>Speed <select id="sp">${[.5,1,1.5,2,4].map(v=>`<option ${v==st.sp?'selected':''} value="${v}">${v}×</option>`).join('')}</select></label><span>Step ${T?st.k+1:0}/${T?last+1:0}</span><span class="row"><button data-k="rec" class="${st.kind=='rec'?'on':''}">Recursion</button><button data-k="memo" class="${st.kind=='memo'?'on':''}">Memoization</button><button data-k="tab" class="${st.kind=='tab'?'on':''}">Tabulation</button></span>`;
+ const go=k=>{st.k=Math.max(0,Math.min(last,k));if(st.k==last)stop();render()};
+ $('b0').onclick=()=>{stop();go(0)};$('b1').onclick=()=>{stop();go(st.k-1)};$('b2').onclick=()=>{stop();go(st.k+1)};$('b3').onclick=()=>{stop();go(last)};$('b4').onclick=()=>{stop();go(0)};
+ $('bp').onclick=()=>{if(st.timer)return stop();if(st.k>=last)st.k=0;st.timer=setInterval(()=>go(st.k+1),900/st.sp);ctl();render()};
+ $('sp').onchange=e=>{st.sp=+e.target.value;if(st.timer){stop();$('bp').click()}};
+ document.querySelectorAll('#ctl [data-k]').forEach(b=>b.onclick=()=>{stop();st.kind=b.dataset.k;st.k=0;render()})}
+function render(){const c=CH[st.ch];
+ $('ch').innerHTML=CH.map((x,i)=>`<button data-c="${i}" class="${i==st.ch?'on':''}">${x[0]}</button>`).join('');
+ document.querySelectorAll('#ch button').forEach(b=>b.onclick=()=>{stop();const i=+b.dataset.c;st.ch=i;st.kind=CH[i][1];if(CH[i][2])st.str=CH[i][2];build()});
+ $('intro').innerHTML=`<h3>${c[0]}</h3><p>${c[3]}</p><div id="xtra"></div>`;
+ ctl();if(!st.T){['str','ex','sc','stk','cnt','cells','tree','vars','dry','val'].forEach(i=>$(i).innerHTML='');$('code').innerHTML='';return}
+ const t=cur(),e=t.ev[st.k],v=e.v,s=st.str,n=s.length,i=v.i;
+ $('code').innerHTML=LINES[st.kind].map((l,j)=>`<span class="ln${j==e.line?' a':''}"><i>${j+1}</i>${hl(l)}</span>`).join('');
+ const act=document.querySelector('.ln.a');if(act&&act.scrollIntoView&&!matchMedia('(prefers-reduced-motion:reduce)').matches)act.parentNode.scrollTop=Math.max(0,act.offsetTop-80);
+ $('str').innerHTML=[...s].map((ch,j)=>{let cl='cd',lb='';if(i!==undefined){if(j<i)cl+=' done',lb='done';if(j==i)cl+=' cur',lb='current';if(j==i+1&&v.ps)cl+=' pr',lb='pair?';if(j==i+1&&!v.ps&&v.o1!==undefined)lb='next'}return`<div class="${cl}"><b>${ch}</b><small>${lb}</small>#${j}</div>`}).join('')||'(empty)';
+ $('ex').textContent=e.text;
+ $('sc').innerHTML=v.o1===undefined?'':`<table><tr><td>Option 1 (alone)</td><td>${v.o1=='pending'?'1 + solve(i+1) = pending':'1 + child = '+v.o1}</td></tr><tr><td>Option 2 (pair)</td><td>${v.ps?`gross 4, toggle penalty ${v.ps==3?'−1':'0'}, net ${v.ps}; total ${v.o2===undefined?'not yet':v.o2=='pending'?'pending':v.o2}`:'unavailable / not yet reached'}</td></tr><tr><td>Chosen ans</td><td>${v.row||v.o2!==undefined&&v.o2!='pending'&&v.ans!==undefined?v.ans:'—'}</td></tr></table>`;
+ $('stk').innerHTML=st.kind=='tab'?'No recursive call stack in tabulation.':e.stack.length?e.stack.map((id,j)=>`<span class="fr${j==e.stack.length-1?' a':''}">solve(${t.nodes[id].i})</span>`).join(''):'(empty)';
+ $('cnt').innerHTML=st.kind=='tab'?`Loop iterations done: ${t.ev.slice(0,st.k+1).filter(x=>x.v.row).length}`:`Invocations: <b>${e.calls}</b> · base calls: <b>${e.base}</b>${st.kind=='memo'?` · cache hits: <b>${e.hit}</b> · misses (states calculated): <b>${e.miss}</b>`:''}`;
+ $('stT').textContent=st.kind=='rec'?'Storage: none (plain recursion keeps no cache)':st.kind=='memo'?'Cache dp[i] (−1 = not calculated)':'DP table (filled right to left)';
+ $('cells').innerHTML=e.dp.map((d,j)=>{let cl='cl',lb='';if(st.kind=='memo'){if(j==i)cl+=v.hit?' hit':' act',lb=v.hit?'HIT':'current';return`<div class="${cl}">dp[${j}]<b>${d==-1?'−1':d}</b>${lb||(d==-1?'not calc.':'calculated')}</div>`}
+  const base=j>=n,dn=!base&&i!==undefined&&j>i,ac=j==i;if(ac)cl+=' act';if(base)cl+=' base';if(i!==undefined&&(j==i+1||(j==i+2&&i+1<n)))cl+=' use';
+  return`<div class="${cl}">dp[${j}]<b>${base||dn||(ac&&v.row)?d:'?'}</b>${base?'base':ac?'current':dn?'calculated':j==i+1||j==i+2?'uses':'pending'}</div>`}).join('')||'';
+ if(st.kind=='rec')$('cells').innerHTML='—';
+ $('vars').innerHTML=`s="${esc(s)}", n=${n}${i!==undefined?`, i=${i}, s[i]='${s[i]}'${s[i+1]?`, s[i+1]='${s[i+1]}'`:''}`:''}<br>option1=${v.o1??'not yet'} · pairScore=${v.ps??'n/a'} · option2=${v.o2??'n/a'} · ans=${v.ans??'not yet'}${v.ret!==undefined?` · <b>return ${v.ret}</b>`:''}`;
+ // tree
+ const tp=$('trp');if(st.kind=='tab')tp.style.display='none';else{tp.style.display='';const N=t.nodes;
+  if(N.length>150)$('tree').innerHTML=`Tree has ${N.length} nodes — too large to draw. Use the dry-run table below (full trace is still stepped).`;
+  else{const vis=N.filter(x=>x.enter<=st.k),W=Math.max(...N.map(x=>x.x))*74+80,H=Math.max(...N.map(x=>x.d))*70+70,top=e.stack[e.stack.length-1];
+   $('tree').innerHTML=`<svg width="${W}" height="${H}" role="img" aria-label="Recursion tree">${vis.filter(x=>x.par!=null).map(x=>`<line x1="${N[x.par].x*74+40}" y1="${N[x.par].d*70+30}" x2="${x.x*74+40}" y2="${x.d*70+30}" stroke="#4b6199"/>`).join('')}${vis.map(x=>{const id=N.indexOf(x),done=x.exit<=st.k;return`<g data-k="${x.enter}" style="cursor:pointer"><rect x="${x.x*74+8}" y="${x.d*70+10}" width="64" height="40" rx="8" fill="${x.hit&&done?'#0c3328':'#0e1730'}" stroke="${id==top?'#22d3ee':x.hit&&done?'#34d399':'#4b6199'}" stroke-width="${id==top?3:1.5}" ${x.hit&&done?'':''}/><text x="${x.x*74+40}" y="${x.d*70+26}" text-anchor="middle">solve(${x.i})</text><text x="${x.x*74+40}" y="${x.d*70+42}" text-anchor="middle">${done?(x.hit?'HIT → ':'→ ')+x.val:'…'}</text></g>`}).join('')}</svg>`;
+   document.querySelectorAll('#tree g').forEach(g=>g.onclick=()=>{stop();st.k=+g.dataset.k;render()})}}
+ // dry table
+ let rows='';if(st.kind=='tab')rows=t.ev.map((x,j)=>[x,j]).filter(([x,j])=>x.v.row&&j<=st.k).map(([x,j])=>`<tr data-k="${j}" class="${j==st.k?'a':''}"><td>${x.v.i}</td><td>${esc(s.slice(x.v.i))}</td><td>${x.v.o1}</td><td>${x.v.o2??'unavailable'}</td><td>${x.v.ans}</td><td>dp[${x.v.i}]=${x.v.ans}</td></tr>`).join('');
+ else rows=t.nodes.filter(x=>x.enter<=st.k).slice(0,300).map((x,j)=>{const d=x.exit<=st.k;return`<tr data-k="${x.enter}"><td>${j+1}</td><td>solve(${x.i})</td><td>${d?x.o1:'…'}</td><td>${d?x.o2:'…'}</td><td>${d?(x.hit?'cache hit':x.i>=n?'base case':'max'):'pending'}</td><td>${d?x.val:'…'}</td></tr>`}).join('');
+ $('dry').innerHTML=`<table><tr>${st.kind=='tab'?'<th>i</th><th>Suffix</th><th>Option 1</th><th>Option 2</th><th>Chosen</th><th>Cell</th>':'<th>Call #</th><th>Call</th><th>Option 1</th><th>Option 2</th><th>Result type</th><th>Return</th>'}</tr>${rows}</table>`;
+ document.querySelectorAll('#dry tr[data-k]').forEach(r=>r.onclick=()=>{stop();st.k=+r.dataset.k;render()});
+ // validation
+ const r=[['Recursion',vRec(s),t.ans&&st.T.rec.ans],['Memoization',vMemo(s),st.T.memo.ans],['Tabulation',vTab(s),st.T.tab.ans]],b=n<=12?vBrute(s):null,all=[...r.flatMap(x=>[x[1],x[2]]),...(b===null?[]:[b])],okk=all.every(x=>x===all[0]);
+ $('val').innerHTML=r.map(x=>`${x[0]}: ${x[1]} (trace: ${x[2]})`).join('<br>')+`<br>Brute force: ${b===null?'skipped (long input)':b}<br><span class="${okk?'ok':'err'}">${okk?'✔ All results match':'✘ MISMATCH — check implementation'}</span>`;
+ const x=$('xtra');if(st.ch==9){x.innerHTML=`<table><tr><th>Property</th><th>Recursion</th><th>Memoization</th><th>Tabulation</th></tr><tr><td>Answer</td>${['rec','memo','tab'].map(k=>`<td>${st.T[k].ans}</td>`).join('')}</tr><tr><td>Invocations (this input)</td>${['rec','memo'].map(k=>`<td>${st.T[k].final.calls}</td>`).join('')}<td>none (loop)</td></tr><tr><td>Cache hits / states calc.</td><td>—</td><td>${st.T.memo.final.hit} / ${st.T.memo.final.miss}</td><td>—</td></tr><tr><td>Time</td><td>O(2ⁿ) upper bound</td><td>O(n)</td><td>O(n)</td></tr><tr><td>Aux. space</td><td>O(n) stack</td><td>O(n) cache + stack</td><td>O(n) table (n+2)</td></tr><tr><td>Call stack</td><td>Yes</td><td>Yes</td><td>No</td></tr></table>`}
+ else if(st.ch==10){x.innerHTML=QZ.map((q,j)=>`<div class="q"><b>${q[0]}</b><br>${q[1].map((o,k)=>`<button data-q="${j}" data-o="${k}">${o}</button>`).join('')}<div id="qf${j}" aria-live="polite"></div></div>`).join('')+'<p>Final challenge: type a new string above, predict its answer, then step through all three approaches and check the validation panel.</p>';
+  x.querySelectorAll('button').forEach(b=>b.onclick=()=>{const q=QZ[+b.dataset.q],okq=+b.dataset.o==q[2];$('qf'+b.dataset.q).innerHTML=`<span class="${okq?'ok':'err'}">${okq?'Correct. ':'Not quite — try again. '}</span>${okq?q[3]:''}`})}
+}
+// ===== INIT =====
+$('pre').innerHTML=PRE.map(p=>`<button data-p="${p}">${p}</button>`).join('');
+document.querySelectorAll('#pre button').forEach(b=>b.onclick=()=>{st.str=b.dataset.p;build()});
+$('in').oninput=e=>{st.str=e.target.value.toUpperCase();build()};
+$('rs').onclick=()=>build();
+$('cp').onclick=()=>{const t=CODE[st.kind];navigator.clipboard?navigator.clipboard.writeText(t):0;$('cp').textContent='Copied';setTimeout(()=>$('cp').textContent='Copy code',1200)};
+document.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>{$('app').dataset.v=b.dataset.v;document.querySelectorAll('[data-v].on,button[data-v]').forEach(x=>x.classList.toggle('on',x.dataset.v==b.dataset.v&&x.tagName=='BUTTON'))});
+addEventListener('keydown',e=>{if(/INPUT|SELECT/.test(e.target.tagName)||!st.T)return;if(e.key=='ArrowRight'){stop();st.k=Math.min(cur().ev.length-1,st.k+1);render()}if(e.key=='ArrowLeft'){stop();st.k=Math.max(0,st.k-1);render()}});
+build();
+</script></body></html>
